@@ -107,3 +107,106 @@ No hay reintentos automáticos. Volver a asignar envía nuevamente a todos los u
 La actualización añade InvoiceAssigned, su plantilla y InvoiceMailTest, y modifica WorkflowController y el formulario de asignación. Suite verificada: 33 pruebas, 379 verificaciones; no se realizó entrega SMTP real. Prueba con dos cuentas propias del área, revisa el adjunto recibido y confirma que corresponde al PDF actual. El correo manual de Usuarios sigue siendo de asunto y texto, sin adjunto.
 
 Consulta **README.txt** para el procedimiento completo en texto plano: instalación PowerShell, ejecución, cuentas demo, SMTP, envío de factura para pago, respaldo y solución de problemas.
+
+## Historial de versiones
+
+Este historial resume los hitos documentados y el código disponible; no atribuye fechas de publicación ni supone que existan tags Git. La documentación original de la carpeta v0.3 llamó al flujo completo «Parte 3 (v1.0)». Aquí se identifica ese mismo hito como **v0.3** para mantener la secuencia de desarrollo utilizada en este proyecto.
+
+| Versión | Cambios principales | Resultado |
+| --- | --- | --- |
+| v0.1 | Registro y almacenamiento básico de archivos PDF de facturas. | Base del registro documental. |
+| v0.2 | Autenticación, roles y áreas. | Acceso identificado y organización de facturas por área. |
+| v0.3 | Flujo de estados; proveedor y folio; asignación de áreas; comprobantes; revisión, corrección y confirmación; historial y avisos internos; edición, papelera y restauración; conservación de documentos; filtros y control de versión del formulario. | Seguimiento completo del pago externo y su revisión. |
+| v0.4 | Gestión y listado de usuarios para jefe/admin; correo único, contraseña confirmada y hash; autorización en servidor; correo manual; configuración MAIL y documentación de instalación. | Creación de cuentas y comunicación desde la aplicación. |
+| v0.4, ampliación | Correo individual con el PDF vigente e instrucciones al asignar una factura; manejo de fallos parciales y conservación de avisos internos; pruebas y documentación adicionales. | Usuarios del área reciben la factura para gestionar su pago. No constituye v0.5 ni crea un tag. |
+
+La v0.4 reutiliza las tablas de v0.3 y no añade migraciones. Conserva la asignación y administración de facturas exclusivamente para el jefe; el nuevo rol admin administra usuarios y correo manual.
+
+## Diagramas del sistema
+
+### Arquitectura general
+
+```mermaid
+flowchart LR
+    B["Navegador: jefe, admin o usuario"] --> R["Rutas Laravel y sesión"]
+    R --> P["Autorización y validación en servidor"]
+    P --> C["Controladores de autenticación, facturas, flujo y usuarios"]
+    C --> V["Vistas Blade"]
+    V --> B
+    C --> D[("SQLite: usuarios, áreas, facturas, documentos, eventos y avisos")]
+    C --> F["Almacenamiento privado de PDFs"]
+    C --> M["Correo Laravel con MAIL_*"]
+    M --> S["SMTP: entrega mediante proveedor"]
+    M --> L["log / array: simulación sin entrega"]
+```
+
+Los PDFs se guardan como archivos privados; SQLite conserva sus referencias y los datos del flujo. Los enlaces requieren sesión y permisos. Una copia adjunta enviada por correo queda fuera del control de acceso de la aplicación.
+
+### Flujo de estados de la factura
+
+```mermaid
+stateDiagram-v2
+    [*] --> recibida: Jefe registra PDF
+    recibida --> por_pagar: Jefe asigna área
+    por_pagar --> por_pagar: Jefe vuelve a asignar
+    por_pagar --> en_revision: Usuario del área sube comprobante
+    en_revision --> correccion: Jefe solicita corrección
+    correccion --> en_revision: Usuario sube comprobante corregido
+    en_revision --> confirmada: Jefe aprueba comprobante
+```
+
+El pago se realiza externamente: subir el comprobante no confirma automáticamente el pago. Cada asignación genera avisos internos e intenta enviar el PDF por correo. La papelera es una eliminación lógica mediante `deleted_at`, no otro estado del pago; restaurar conserva el estado de la factura.
+
+### Secuencia de asignación y correo con PDF
+
+```mermaid
+sequenceDiagram
+    actor J as Jefe
+    participant A as Aplicación Laravel
+    participant D as Base de datos
+    participant F as Almacenamiento privado
+    participant M as Correo configurado
+    actor U as Usuario del área
+    J->>A: Asignar área e instrucciones con versión del formulario
+    A->>D: Validar y guardar estado, historial y avisos en transacción
+    alt Asignación rechazada o transacción revertida
+        A-->>J: Error; no se envían correos
+    else Asignación guardada
+        A->>F: Leer PDF vigente
+        alt PDF no disponible
+            A-->>J: Asignación conservada; error de adjunto
+        else PDF disponible
+            loop Por cada cuenta usuario del área elegida
+                A->>M: Correo individual con instrucciones y PDF
+                alt El servicio procesa el mensaje
+                    M-->>A: Resultado de procesamiento
+                else Falla el envío
+                    M-->>A: Error; continuar con el siguiente usuario
+                end
+            end
+            A-->>J: Resumen de procesados o simulados y fallos
+        end
+        U->>A: Iniciar sesión y consultar factura o aviso interno
+        U->>A: Tras pagar externamente, subir comprobante
+        A->>D: Guardar comprobante y estado en_revision
+    end
+```
+
+SMTP procesado no garantiza recepción. En log/array solo se simula el correo. Los avisos internos y la asignación permanecen guardados aunque falle el correo. No hay cola ni reintento automático; volver a asignar puede duplicar mensajes ya recibidos.
+
+### Relaciones principales de datos
+
+```mermaid
+erDiagram
+    AREAS o|--o{ USERS : "area_id"
+    AREAS o|--o{ FACTURAS : "area_id"
+    USERS o|--o{ FACTURAS : "uploaded_by"
+    FACTURAS ||--o{ DOCUMENTOS : "factura_id"
+    FACTURAS ||--o{ EVENTOS : "factura_id"
+    FACTURAS ||--o{ AVISOS : "factura_id"
+    USERS o|--o{ DOCUMENTOS : "user_id autor"
+    USERS o|--o{ EVENTOS : "user_id actor"
+    USERS ||--o{ AVISOS : "user_id destinatario"
+```
+
+El diagrama muestra las relaciones principales, sin las tablas técnicas de sesiones, caché y trabajos. La base permite área nula en usuarios heredados y facturas sin asignar; el formulario nuevo de usuarios exige un área. Documentos y eventos admiten autor nulo para registros históricos. Cada aviso interno pertenece a una factura y a un usuario. El correo no añade una tabla propia de seguimiento de entregas.

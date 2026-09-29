@@ -406,3 +406,145 @@ No incluyas .env, vendor, node_modules, database.sqlite, otras bases privadas, d
 
 Las instrucciones anteriores son para desarrollo local. El servidor integrado no es un despliegue de producción. Para publicar una instalación, configura un servidor con raíz en public, HTTPS, APP_DEBUG=false y cuentas propias sin credenciales demo.
 
+
+15. HISTORIAL DE VERSIONES
+
+Este resumen se basa en la documentación y el código disponibles. No supone fechas de publicación ni tags Git.
+
+v0.1 - Registro inicial
+    Registro y almacenamiento básico de PDFs de facturas.
+
+v0.2 - Acceso y organización
+    Autenticación, roles y áreas.
+
+v0.3 - Seguimiento completo del pago
+    Estados recibida, por_pagar, en_revision, correccion y confirmada.
+    Proveedor, folio y asignación a áreas.
+    Comprobantes, solicitudes de corrección y confirmación por el jefe.
+    Historial de acciones y notificaciones internas.
+    Edición, eliminación recuperable y restauración.
+    Conservación de documentos anteriores, filtros y control de versión
+    para rechazar formularios obsoletos.
+
+v0.4 - Usuarios y comunicación
+    Registro y listado de usuarios para jefe/admin.
+    Correo único, contraseña confirmada y almacenamiento con hash.
+    Autorización en servidor y correo manual a cuentas registradas.
+    Configuración MAIL e instrucciones de instalación y uso.
+
+v0.4 - Ampliación de correo con PDF
+    Correo individual con el PDF vigente e instrucciones al asignar.
+    Destinatarios calculados a partir de usuarios del área seleccionada.
+    Manejo de fallos por destinatario sin revertir la asignación.
+    Conservación de los avisos internos y pruebas adicionales.
+    Esta ampliación sigue siendo v0.4; no crea v0.5 ni un tag Git.
+
+Nota de nomenclatura: el README original de la carpeta v0.3 denominaba
+al flujo completo "Parte 3 (v1.0)". Aquí se llama v0.3 a ese mismo hito
+para mantener la secuencia de desarrollo usada en este proyecto.
+
+v0.4 no agrega migraciones. La asignación y administración de facturas
+siguen siendo funciones del jefe. Admin gestiona usuarios y correo manual.
+
+16. DIAGRAMAS EN TEXTO PLANO
+
+El README.md contiene los mismos conceptos en diagramas Mermaid.
+Esta versión permite leerlos sin un visor de diagramas.
+
+A. ARQUITECTURA GENERAL
+
+[Navegador: jefe / admin / usuario]
+                  |
+                  v
+[Rutas Laravel + sesión + autorización + validación]
+                  |
+                  v
+[Controladores] --------------------> [Vistas Blade -> Navegador]
+       |
+       +--> [SQLite: datos, estados, historial y avisos]
+       |
+       +--> [Almacenamiento privado: PDFs]
+       |
+       +--> [Correo Laravel: configuración MAIL_*]
+                         |
+                         +--> SMTP: proveedor de correo
+                         +--> log/array: simulación sin entrega
+
+Los archivos PDF no se almacenan dentro de SQLite: la base conserva
+sus referencias. El acceso web exige permisos. Un PDF adjunto ya recibido
+por correo queda fuera del control de acceso de la aplicación.
+
+B. ESTADOS DE UNA FACTURA
+
+Jefe registra PDF
+       |
+       v
+   [recibida]
+       | Jefe asigna área
+       v
+   [por_pagar] <--- Volver a asignar mantiene este estado
+       | Usuario del área paga externamente y sube comprobante
+       v
+   [en_revision] ----------------------> [confirmada]
+       |                                  Jefe aprueba
+       | Jefe solicita corrección
+       v
+   [correccion]
+       | Usuario sube comprobante corregido
+       +------------------------------> [en_revision]
+
+Cada asignación guarda avisos internos e intenta enviar correo con PDF.
+Subir el comprobante no confirma el pago automáticamente.
+La papelera usa deleted_at: no es otro estado del pago. Al restaurar,
+la factura conserva su estado.
+
+C. ASIGNACIÓN Y ENVÍO CON PDF
+
+Jefe selecciona área, instrucciones y envía el formulario
+       |
+       v
+Servidor valida permisos, estado, usuarios y versión
+       |
+       +-- Rechazo/fallo de transacción --> Error; ningún correo
+       |
+       v
+Transacción guarda asignación + historial + avisos internos
+       |
+       v
+Leer PDF vigente del almacenamiento privado
+       |
+       +-- Archivo ausente o ilegible --> Error; asignación conservada
+       |
+       v
+Por cada usuario del área: correo individual + instrucciones + PDF
+       |
+       +-- Procesado --> Contar resultado
+       +-- Error -----> Registrar fallo y continuar con los demás
+       |
+       v
+Mostrar resumen de procesados/simulados y destinatarios fallidos
+
+Después, el usuario inicia sesión, revisa el estado actual, realiza
+el pago externamente y sube el comprobante para revisión del jefe.
+SMTP procesado no garantiza recepción; log/array no entrega mensajes.
+No hay reintento automático. Volver a asignar puede duplicar correos.
+
+D. RELACIONES PRINCIPALES DE DATOS
+
+AREA --------< USUARIOS       (users.area_id)
+AREA --------< FACTURAS       (facturas.area_id)
+USUARIO -----< FACTURAS       (facturas.uploaded_by)
+FACTURA -----< DOCUMENTOS     (documentos.factura_id)
+FACTURA -----< EVENTOS        (eventos.factura_id)
+FACTURA -----< AVISOS         (avisos.factura_id)
+USUARIO -----< DOCUMENTOS     (documentos.user_id: autor)
+USUARIO -----< EVENTOS        (eventos.user_id: actor)
+USUARIO -----< AVISOS         (avisos.user_id: destinatario)
+
+La notación A -----< B significa que un registro A puede relacionarse
+con varios registros B. La base admite área nula para usuarios heredados
+y facturas sin asignar. El formulario nuevo de usuarios exige área.
+Los autores de documentos/eventos pueden ser nulos en datos históricos.
+Cada aviso pertenece a una factura y a un usuario. No hay una tabla propia
+de seguimiento de entrega de correos. Se omiten tablas técnicas de
+sesiones, caché y trabajos.
