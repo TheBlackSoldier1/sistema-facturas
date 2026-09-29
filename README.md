@@ -1,28 +1,70 @@
-# Sistema de Facturas — Parte 2 (v0.2)
+# Sistema de Facturas — Parte 3 (v1.0)
 
-Segunda etapa del sistema. Mantiene el registro de PDFs de la Parte 1 e incorpora control de acceso mediante usuarios, roles y áreas.
+Versión actual y más completa del sistema de seguimiento de facturas desarrollado con Laravel, PHP y SQL/SQLite.
 
-## Cambios respecto de v0.1
+## Cambios respecto de v0.2
 
-- Inicio y cierre de sesión.
-- Rol `jefe` y rol `usuario`.
-- Creación de áreas.
-- Asociación de usuarios a un área.
-- Asociación opcional de una factura a un área.
-- Registro del usuario que cargó la factura.
-- El jefe puede ver todas las facturas.
-- El usuario normal solamente puede acceder a las facturas de su área.
+Se incorpora el flujo completo de seguimiento de una factura.
 
-## Migraciones de esta versión
+### Estados
+
+- `recibida`
+- `por_pagar`
+- `en_revision`
+- `correccion`
+- `confirmada`
+
+### Funcionalidades nuevas
+
+- Registro de proveedor y folio.
+- Asignación de facturas a áreas.
+- Comprobantes de pago.
+- Revisión del comprobante por parte del jefe.
+- Solicitud de corrección.
+- Confirmación de pago.
+- Historial de acciones y cambios.
+- Notificaciones internas.
+- Control de versiones para evitar aplicar formularios obsoletos.
+- Edición de datos de factura.
+- Eliminación recuperable mediante papelera.
+- Restauración de facturas.
+- Conservación de documentos asociados.
+- Búsqueda y filtros por estado.
+
+## Migraciones
 
 1. `2026_09_28_000001_create_facturas_table.php`
 2. `2026_09_28_000002_add_roles_and_areas.php`
+3. `2026_09_28_000003_add_invoice_workflow.php`
 
-La segunda migración agrega:
+La tercera migración agrega los campos de workflow y las tablas:
 
-- tabla `areas`
-- `role` y `area_id` en `users`
-- `area_id` y `uploaded_by` en `facturas`
+- `documentos`
+- `eventos`
+- `avisos`
+
+## Flujo general
+
+```text
+Factura recibida
+      ↓
+Recibida
+      ↓
+Asignada a un área
+      ↓
+Por pagar
+      ↓
+Usuario realiza el pago externamente
+      ↓
+Sube comprobante
+      ↓
+En revisión
+      ↓
+┌─────────────────┴──────────────────┐
+Corrección requerida          Pago confirmado
+      ↓                              ↓
+Nuevo comprobante               Confirmada
+```
 
 ## Instalación
 
@@ -35,10 +77,19 @@ php artisan migrate --seed
 php artisan serve
 ```
 
-## Usuarios de demostración
+## Nota de seguridad
 
-Los usuarios se generan con `DemoUsersSeeder` solo en entorno local/testing. Revisa ese archivo para las cuentas de prueba.
+No subas al repositorio:
 
-## Evolución
+- `.env`
+- `vendor/`
+- `node_modules/`
+- `database/database.sqlite`
 
-La Parte 3 incorpora el flujo completo de la factura: estados, comprobantes, historial, notificaciones, correcciones y confirmación de pago.
+El `.gitignore` del proyecto ya excluye estos archivos.
+
+## Historial del proyecto
+
+- **v0.1:** registro y almacenamiento básico de PDFs.
+- **v0.2:** autenticación, roles y áreas.
+- **v1.0:** workflow completo de facturas, comprobantes, estados, historial y notificaciones.
