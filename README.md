@@ -1,41 +1,28 @@
-# Sistema de Facturas — Parte 1 (v0.1)
+# Sistema de Facturas — Parte 2 (v0.2)
 
-Primera etapa del sistema desarrollado con Laravel y PHP.
+Segunda etapa del sistema. Mantiene el registro de PDFs de la Parte 1 e incorpora control de acceso mediante usuarios, roles y áreas.
 
-## Objetivo de esta versión
+## Cambios respecto de v0.1
 
-Registrar documentos de facturas en formato PDF y permitir su descarga desde la aplicación.
+- Inicio y cierre de sesión.
+- Rol `jefe` y rol `usuario`.
+- Creación de áreas.
+- Asociación de usuarios a un área.
+- Asociación opcional de una factura a un área.
+- Registro del usuario que cargó la factura.
+- El jefe puede ver todas las facturas.
+- El usuario normal solamente puede acceder a las facturas de su área.
 
-## Funcionalidades
+## Migraciones de esta versión
 
-- Carga de archivos PDF.
-- Validación de tipo de archivo y límite de 10 MB.
-- Almacenamiento del PDF mediante Laravel Storage.
-- Registro en base de datos de nombre, ruta y tamaño del documento.
-- Listado de facturas registradas.
-- Descarga del PDF almacenado.
+1. `2026_09_28_000001_create_facturas_table.php`
+2. `2026_09_28_000002_add_roles_and_areas.php`
 
-## Base de datos
+La segunda migración agrega:
 
-Esta versión utiliza la tabla `facturas` creada por:
-
-`2026_09_28_000001_create_facturas_table.php`
-
-Campos principales:
-
-- `id`
-- `nombre_original`
-- `ruta_pdf`
-- `tamano_bytes`
-- `created_at`
-- `updated_at`
-
-## Tecnologías
-
-- PHP 8.3+
-- Laravel 13
-- SQLite/SQL mediante Eloquent ORM
-- Blade
+- tabla `areas`
+- `role` y `area_id` en `users`
+- `area_id` y `uploaded_by` en `facturas`
 
 ## Instalación
 
@@ -43,29 +30,15 @@ Campos principales:
 composer install
 cp .env.example .env
 php artisan key:generate
-```
-
-Crear la base SQLite:
-
-```bash
 touch database/database.sqlite
-php artisan migrate
-```
-
-En Windows Git Bash puedes usar:
-
-```bash
-mkdir -p database
-touch database/database.sqlite
-php artisan migrate
-```
-
-Iniciar:
-
-```bash
+php artisan migrate --seed
 php artisan serve
 ```
 
+## Usuarios de demostración
+
+Los usuarios se generan con `DemoUsersSeeder` solo en entorno local/testing. Revisa ese archivo para las cuentas de prueba.
+
 ## Evolución
 
-Esta es la versión inicial. La siguiente etapa incorpora autenticación, roles y áreas.
+La Parte 3 incorpora el flujo completo de la factura: estados, comprobantes, historial, notificaciones, correcciones y confirmación de pago.

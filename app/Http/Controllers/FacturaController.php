@@ -9,22 +9,25 @@ use Throwable;
 
 class FacturaController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return view('facturas.index', [
-            'facturas' => Factura::orderByDesc('id')->get(),
-        ]);
+        $query = Factura::with(['area', 'uploader'])->orderByDesc('id');
+
+        if (! $request->user()->isJefe()) {
+            abort_unless($request->user()->role === 'usuario' && $request->user()->area_id, 403);
+            $query->where('area_id', $request->user()->area_id);
+        }
+
+        return view('facturas.index', ['facturas' => $query->get()]);
     }
 
     public function store(Request $request)
     {
+        abort_unless($request->user()->isJefe(), 403);
+
         $request->validate([
             'pdf' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:10240'],
-        ], [
-            'pdf.required' => 'Selecciona un PDF antes de guardar.',
-            'pdf.mimes' => 'El archivo debe ser un PDF.',
-            'pdf.extensions' => 'El archivo debe tener extensión .pdf.',
-            'pdf.max' => 'El PDF no puede superar los 10 MB.',
+            'area_id' => ['nullable', 'exists:areas,id'],
         ]);
 
         $archivo = $request->file('pdf');
@@ -40,21 +43,26 @@ class FacturaController extends Controller
                 'nombre_original' => mb_substr(basename(str_replace('\\', '/', $archivo->getClientOriginalName())), 0, 255),
                 'ruta_pdf' => $ruta,
                 'tamano_bytes' => $archivo->getSize(),
+                'area_id' => $request->input('area_id'),
+                'uploaded_by' => $request->user()->id,
             ]);
         } catch (Throwable $error) {
             if (is_string($ruta)) {
                 Storage::disk('local')->delete($ruta);
             }
-
             report($error);
             return back()->withErrors(['pdf' => 'No pudimos guardar el PDF. Intenta nuevamente.']);
         }
 
-        return redirect()->route('facturas.index')->with('success', 'PDF guardado correctamente.');
+        return redirect()->route('facturas.index')->with('success', 'Factura registrada correctamente.');
     }
 
-    public function download(Factura $factura)
+    public function download(Request $request, Factura $factura)
     {
+        if (! $request->user()->isJefe()) {
+            abort_unless((int) $request->user()->area_id === (int) $factura->area_id, 403);
+        }
+
         abort_unless(Storage::disk('local')->exists($factura->ruta_pdf), 404, 'El PDF no está disponible.');
 
         return Storage::disk('local')->download($factura->ruta_pdf, $factura->nombre_original, [
