@@ -66,19 +66,19 @@ Esta migración crea la estructura inicial necesaria para almacenar las facturas
 
 ### Flujo inicial
 
-Usuario
-   ↓
-Formulario de factura
-   ↓
-FacturaController
-   ↓
-Validación
-   ↓
-Guardar información
-   ↓
-Guardar PDF
-   ↓
-Base de datos
+    Usuario
+       ↓
+    Formulario de factura
+       ↓
+    FacturaController
+       ↓
+    Validación
+       ↓
+    Guardar información
+       ↓
+    Guardar PDF
+       ↓
+    Base de datos
 
 ---
 
@@ -141,17 +141,17 @@ Esta etapa amplía la estructura inicial para soportar usuarios, roles y áreas.
 
 ### Flujo general de la Parte 2
 
-Usuario
-   ↓
-Inicio de sesión
-   ↓
-Autenticación
-   ↓
-Rol del usuario
-   ↓
-Área asociada
-   ↓
-Acceso al sistema de facturas
+    Usuario
+       ↓
+    Inicio de sesión
+       ↓
+    Autenticación
+       ↓
+    Rol del usuario
+       ↓
+    Área asociada
+       ↓
+    Acceso al sistema de facturas
 
 ---
 
@@ -292,31 +292,31 @@ Esta etapa incorpora, entre otros elementos, las tablas:
 
 # Flujo general del sistema
 
-Factura registrada
-        ↓
-     Recibida
-        ↓
-Asignación a un área
-        ↓
-    Por pagar
-        ↓
-Usuario realiza el proceso de pago
-        ↓
-Sube comprobante
-        ↓
-   En revisión
-        ↓
-┌───────────────┴─────────────────┐
-│                                 │
-Corrección requerida       Comprobante aprobado
-│                                 │
-↓                                 ↓
-Corrección                 Pago confirmado
-│                                 │
-↓                                 ↓
-Nuevo comprobante             Confirmada
-│
-└──────────────→ En revisión
+    Factura registrada
+            ↓
+         Recibida
+            ↓
+    Asignación a un área
+            ↓
+        Por pagar
+            ↓
+    Usuario realiza el proceso de pago
+            ↓
+    Sube comprobante
+            ↓
+       En revisión
+            ↓
+    ┌───────────────┴─────────────────┐
+    │                                 │
+    Corrección requerida       Comprobante aprobado
+    │                                 │
+    ↓                                 ↓
+    Corrección                 Pago confirmado
+    │                                 │
+    ↓                                 ↓
+    Nuevo comprobante             Confirmada
+    │
+    └──────────────→ En revisión
 
 ---
 
@@ -366,13 +366,13 @@ Las facturas pueden ser eliminadas de forma recuperable.
 
 El flujo general es:
 
-Factura
-   ↓
-Eliminación
-   ↓
-Papelera
-   ↓
-Restauración
+    Factura
+       ↓
+    Eliminación
+       ↓
+    Papelera
+       ↓
+    Restauración
 
 De esta forma se evita perder inmediatamente la información relacionada con una factura.
 
@@ -386,13 +386,13 @@ Su objetivo es disminuir problemas cuando dos acciones se realizan utilizando in
 
 Ejemplo:
 
-Usuario abre factura
-        ↓
-Otro usuario modifica la factura
-        ↓
-Primer usuario intenta enviar formulario antiguo
-        ↓
-El sistema puede detectar que la información cambió
+    Usuario abre factura
+            ↓
+    Otro usuario modifica la factura
+            ↓
+    Primer usuario intenta enviar formulario antiguo
+            ↓
+    El sistema puede detectar que la información cambió
 
 ---
 
@@ -400,19 +400,19 @@ El sistema puede detectar que la información cambió
 
 De forma simplificada, el proyecto utiliza la estructura MVC de Laravel.
 
-Usuario
-   ↓
-Routes
-   ↓
-Controllers
-   ↓
-Models
-   ↓
-Base de datos
-   ↓
-Views Blade
-   ↓
-Usuario
+    Usuario
+       ↓
+    Routes
+       ↓
+    Controllers
+       ↓
+    Models
+       ↓
+    Base de datos
+       ↓
+    Views Blade
+       ↓
+    Usuario
 
 Entre los principales controladores se encuentran:
 
