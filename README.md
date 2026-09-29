@@ -1,4 +1,4 @@
-# Sistema de Facturas — Parte 3 (v1.0)
+# Sistema de Facturas — Parte 3 (v0.3)
 
 Versión actual y más completa del sistema de seguimiento de facturas desarrollado con Laravel, PHP y SQL/SQLite.
 
