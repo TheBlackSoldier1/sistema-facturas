@@ -10,6 +10,12 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [AuthController::class, 'store'])->name('login.store');
 });
 Route::middleware('auth')->group(function () {
+    Route::middleware('can:manage-users')->group(function () {
+        Route::get('/usuarios', [\App\Http\Controllers\UserController::class, 'index'])->name('users.index');
+        Route::post('/usuarios', [\App\Http\Controllers\UserController::class, 'store'])->name('users.store');
+        Route::get('/usuarios/{user}/correo', [\App\Http\Controllers\UserController::class, 'compose'])->name('users.mail');
+        Route::post('/usuarios/{user}/correo', [\App\Http\Controllers\UserController::class, 'send'])->middleware('throttle:10,1')->name('users.mail.send');
+    });
     Route::get('/', [FacturaController::class, 'index'])->name('facturas.index');
     Route::post('/facturas', [FacturaController::class, 'store'])->name('facturas.store');
     Route::get('/facturas/{factura}/pdf', [FacturaController::class, 'download'])->name('facturas.download');

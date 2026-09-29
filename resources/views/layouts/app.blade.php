@@ -6,6 +6,7 @@
 <header><div><strong>Facturas / Seguimiento</strong><small>{{auth()->user()->name}} · {{auth()->user()->isJefe()?'Jefe de informática':auth()->user()->area?->nombre}}</small></div><form method="post" action="{{route('logout')}}">@csrf<button>Cerrar sesión</button></form></header>
 <main>
 <nav>
+@can('manage-users')<a href="{{route('users.index')}}">Usuarios</a>@endcan
 <a href="{{route('facturas.index')}}">Facturas y estados</a>
 @if(auth()->user()->isJefe())
 <a href="{{route('history')}}">Historial completo</a><a href="{{route('facturas.index',['papelera'=>1])}}">Papelera</a>
@@ -18,4 +19,3 @@
 @if($errors->any())<div class="notice error" role="alert">@foreach($errors->all() as $error)<div>{{$error}}</div>@endforeach</div>@endif
 @yield('content')
 </main></body></html>
-

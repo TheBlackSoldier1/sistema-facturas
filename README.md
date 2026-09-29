@@ -1,561 +1,109 @@
-# Sistema de Gestión de Facturas
+# Sistema de Facturas v0.4 — desarrollo
 
-Sistema web desarrollado con Laravel, PHP y SQL/SQLite para registrar, almacenar y realizar seguimiento al proceso de gestión de facturas.
+Aplicación Laravel 13 / PHP 8.3+ con SQLite. v0.4 incorpora gestión de usuarios, correo manual y envío del PDF al asignar facturas para pago, conservando el flujo de v0.3: carga de PDFs, áreas, estados, comprobantes, correcciones, confirmación, historial, notificaciones internas, papelera y restauración. No se crea un tag Git.
 
-El proyecto fue desarrollado de forma progresiva y se encuentra dividido en tres etapas principales:
+## Instalación nueva (PowerShell)
 
-- v0.1 — Parte 1: registro y almacenamiento básico de facturas.
-- v0.2 — Parte 2: autenticación, usuarios, roles y áreas.
-- v0.3 — Parte 3: workflow de seguimiento, comprobantes, historial y notificaciones.
+Se requiere PHP 8.3 o superior, Composer y extensiones mbstring, pdo_sqlite, fileinfo, openssl, dom y xml. Comprueba `php -m` y `php --ini` si hay errores de extensiones.
 
-Estado actual: proyecto en desarrollo.
-
----
-
-# Tecnologías utilizadas
-
-- PHP
-- Laravel
-- Blade
-- HTML
-- CSS
-- JavaScript
-- SQL / SQLite
-- Composer
-- Git
-- GitHub
-
----
-
-# Parte 1 — Registro básico de facturas
-
-## Versión v0.1
-
-La primera etapa del proyecto establece la estructura inicial del sistema y permite registrar facturas junto con sus documentos PDF.
-
-### Funcionalidades implementadas
-
-- Creación inicial del proyecto Laravel.
-- Registro de facturas.
-- Almacenamiento de información de la factura.
-- Registro de datos básicos.
-- Carga de documentos PDF.
-- Almacenamiento de la ruta del documento.
-- Visualización de facturas registradas.
-- Descarga de archivos PDF.
-- Validaciones básicas de formulario.
-
-### Componentes principales
-
-En esta etapa se trabaja principalmente con:
-
-- FacturaController
-- Modelo Factura
-- Vistas Blade de facturas
-- Rutas web
-- Base de datos
-- Almacenamiento de documentos
-
-### Base de datos
-
-La primera migración corresponde a:
-
-2026_09_28_000001_create_facturas_table.php
-
-Esta migración crea la estructura inicial necesaria para almacenar las facturas.
-
-### Flujo inicial
-
-    Usuario
-       ↓
-    Formulario de factura
-       ↓
-    FacturaController
-       ↓
-    Validación
-       ↓
-    Guardar información
-       ↓
-    Guardar PDF
-       ↓
-    Base de datos
-
----
-
-# Parte 2 — Autenticación, roles y áreas
-
-## Versión v0.2
-
-La segunda etapa amplía el sistema incorporando autenticación y una estructura de usuarios con diferentes responsabilidades.
-
-### Cambios respecto de v0.1
-
-Se incorporan:
-
-- Inicio de sesión.
-- Autenticación de usuarios.
-- Usuarios del sistema.
-- Roles.
-- Áreas o departamentos.
-- Asociación entre usuarios y áreas.
-- Identificación del usuario que registra una factura.
-- Restricciones según el tipo de usuario.
-
-### Roles
-
-El sistema diferencia principalmente entre:
-
-- Jefe
-- Usuario
-
-Esto permite preparar la plataforma para que determinadas acciones puedan ser realizadas dependiendo de las responsabilidades del usuario.
-
-### Áreas
-
-Las facturas pueden relacionarse con las diferentes áreas existentes dentro de la organización.
-
-Esto permite organizar posteriormente el proceso de asignación y seguimiento.
-
-### Componentes agregados
-
-Entre los principales elementos incorporados se encuentran:
-
-- AuthController.php
-- Area.php
-- User.php
-- DemoUsersSeeder.php
-- resources/views/auth/
-
-También se modifican componentes existentes como:
-
-- FacturaController.php
-- Factura.php
-- routes/web.php
-- resources/views/facturas/
-
-### Segunda migración
-
-2026_09_28_000002_add_roles_and_areas.php
-
-Esta etapa amplía la estructura inicial para soportar usuarios, roles y áreas.
-
-### Flujo general de la Parte 2
-
-    Usuario
-       ↓
-    Inicio de sesión
-       ↓
-    Autenticación
-       ↓
-    Rol del usuario
-       ↓
-    Área asociada
-       ↓
-    Acceso al sistema de facturas
-
----
-
-# Parte 3 — Workflow de seguimiento de facturas
-
-## Versión v0.3
-
-La tercera etapa incorpora el flujo de seguimiento de una factura desde su recepción hasta la confirmación de su pago.
-
-Esta corresponde a la versión actual del proyecto.
-
-### Cambios respecto de v0.2
-
-Se agregan mecanismos para controlar el avance de las facturas, almacenar comprobantes, registrar acciones y generar notificaciones internas.
-
-### Estados de una factura
-
-Actualmente el sistema contempla los siguientes estados:
-
-- recibida
-- por_pagar
-- en_revision
-- correccion
-- confirmada
-
-Cada estado representa una etapa dentro del proceso de gestión.
-
-#### Recibida
-
-La factura fue registrada en el sistema.
-
-#### Por pagar
-
-La factura fue asignada y se encuentra pendiente de pago.
-
-#### En revisión
-
-El usuario realizó el proceso correspondiente y subió un comprobante que debe ser revisado.
-
-#### Corrección
-
-El comprobante o información requiere una modificación antes de poder confirmar el proceso.
-
-#### Confirmada
-
-El comprobante fue revisado y el pago de la factura quedó confirmado.
-
-### Funcionalidades incorporadas en v0.3
-
-La tercera etapa agrega:
-
-- Registro de proveedor.
-- Registro de folio.
-- Asignación de facturas a áreas.
-- Cambio de estados.
-- Gestión del estado por_pagar.
-- Carga de comprobantes de pago.
-- Revisión de comprobantes.
-- Solicitud de correcciones.
-- Confirmación del pago.
-- Historial de acciones.
-- Registro de eventos.
-- Notificaciones internas.
-- Control de versiones de formularios.
-- Edición de información de facturas.
-- Eliminación recuperable.
-- Papelera.
-- Restauración de facturas.
-- Conservación de documentos asociados.
-- Búsqueda de facturas.
-- Filtros por estado.
-
-### Nuevos componentes de la Parte 3
-
-Entre los componentes incorporados se encuentran:
-
-- WorkflowController.php
-- Aviso.php
-- Documento.php
-- Evento.php
-
-También se agregan nuevas vistas relacionadas con el seguimiento:
-
-- resources/views/facturas/history.blade.php
-- resources/views/facturas/notifications.blade.php
-- resources/views/facturas/pagination.blade.php
-- resources/views/facturas/show.blade.php
-
-Además, se modifican componentes existentes:
-
-- FacturaController.php
-- Factura.php
-- routes/web.php
-- resources/views/facturas/index.blade.php
-- resources/views/layouts/app.blade.php
-
----
-
-# Migraciones del proyecto
-
-El proyecto actualmente contiene tres migraciones principales:
-
-1. 2026_09_28_000001_create_facturas_table.php
-2. 2026_09_28_000002_add_roles_and_areas.php
-3. 2026_09_28_000003_add_invoice_workflow.php
-
-## Migración 1
-
-Crea la estructura inicial para el registro de facturas.
-
-Archivo:
-
-2026_09_28_000001_create_facturas_table.php
-
-## Migración 2
-
-Incorpora los elementos relacionados con usuarios, roles y áreas.
-
-Archivo:
-
-2026_09_28_000002_add_roles_and_areas.php
-
-## Migración 3
-
-Agrega los elementos necesarios para implementar el workflow de seguimiento.
-
-Archivo:
-
-2026_09_28_000003_add_invoice_workflow.php
-
-Esta etapa incorpora, entre otros elementos, las tablas:
-
-- documentos
-- eventos
-- avisos
-
----
-
-# Flujo general del sistema
-
-    Factura registrada
-            ↓
-         Recibida
-            ↓
-    Asignación a un área
-            ↓
-        Por pagar
-            ↓
-    Usuario realiza el proceso de pago
-            ↓
-    Sube comprobante
-            ↓
-       En revisión
-            ↓
-    ┌───────────────┴─────────────────┐
-    │                                 │
-    Corrección requerida       Comprobante aprobado
-    │                                 │
-    ↓                                 ↓
-    Corrección                 Pago confirmado
-    │                                 │
-    ↓                                 ↓
-    Nuevo comprobante             Confirmada
-    │
-    └──────────────→ En revisión
-
----
-
-# Historial y trazabilidad
-
-El sistema registra información relacionada con los cambios realizados durante el proceso de una factura.
-
-Esto permite mantener evidencia de acciones como:
-
-- Registro de factura.
-- Asignación.
-- Cambio de estado.
-- Carga de documentos.
-- Carga de comprobantes.
-- Solicitud de corrección.
-- Confirmación del pago.
-
-Los eventos permiten mantener una trazabilidad básica del proceso realizado dentro de la plataforma.
-
----
-
-# Documentos
-
-El sistema permite mantener documentos asociados a las facturas.
-
-Entre ellos se pueden encontrar:
-
-- Factura original en PDF.
-- Comprobantes de pago.
-- Documentos asociados al proceso.
-
-Los documentos no se almacenan directamente dentro de la base de datos. El sistema almacena la información necesaria para localizar los archivos correspondientes.
-
----
-
-# Notificaciones
-
-La versión v0.3 incorpora avisos internos relacionados con acciones realizadas sobre las facturas.
-
-Estos avisos permiten informar al usuario cuando ocurre un cambio relevante dentro del flujo.
-
----
-
-# Papelera y restauración
-
-Las facturas pueden ser eliminadas de forma recuperable.
-
-El flujo general es:
-
-    Factura
-       ↓
-    Eliminación
-       ↓
-    Papelera
-       ↓
-    Restauración
-
-De esta forma se evita perder inmediatamente la información relacionada con una factura.
-
----
-
-# Control de versiones
-
-El sistema incorpora un mecanismo de control de versión de los registros.
-
-Su objetivo es disminuir problemas cuando dos acciones se realizan utilizando información desactualizada.
-
-Ejemplo:
-
-    Usuario abre factura
-            ↓
-    Otro usuario modifica la factura
-            ↓
-    Primer usuario intenta enviar formulario antiguo
-            ↓
-    El sistema puede detectar que la información cambió
-
----
-
-# Arquitectura general
-
-De forma simplificada, el proyecto utiliza la estructura MVC de Laravel.
-
-    Usuario
-       ↓
-    Routes
-       ↓
-    Controllers
-       ↓
-    Models
-       ↓
-    Base de datos
-       ↓
-    Views Blade
-       ↓
-    Usuario
-
-Entre los principales controladores se encuentran:
-
-- FacturaController
-- AuthController
-- WorkflowController
-
-Entre los modelos principales se encuentran:
-
-- Factura
-- User
-- Area
-- Documento
-- Evento
-- Aviso
-
----
-
-# Instalación
-
-## 1. Clonar el repositorio
-
-git clone https://github.com/TheBlackSoldier1/sistema-facturas.git
-
-## 2. Entrar al proyecto
-
-cd sistema-facturas
-
-## 3. Instalar dependencias
-
+```powershell
 composer install
-
-## 4. Crear archivo de configuración
-
-cp .env.example .env
-
-## 5. Generar clave de Laravel
-
+Copy-Item .env.example .env
 php artisan key:generate
-
-## 6. Crear base SQLite
-
-touch database/database.sqlite
-
-## 7. Ejecutar migraciones y datos iniciales
-
-php artisan migrate --seed
-
-## 8. Iniciar servidor
-
+New-Item -ItemType File -Path database/database.sqlite
+php artisan migrate
+php artisan db:seed
 php artisan serve
+```
 
-Laravel normalmente iniciará el proyecto en:
+Abre http://127.0.0.1:8000. Las vistas actuales usan CSS incorporado: no requieren npm para funcionar. `db:seed` crea las cuentas demo únicamente con APP_ENV=local/testing. No ejecutes estos comandos de instalación sobre la carpeta original v0.3 ni sobre una base existente. En Linux usa `cp` y `touch` en lugar de Copy-Item y New-Item.
 
-http://127.0.0.1:8000
+## Datos existentes de v0.3
 
----
+Trabaja en otra carpeta y respalda antes la base y storage/app. El ZIP no contiene datos, documentos subidos ni credenciales. Para conservar datos, copia privadamente la base SQLite y storage/app desde tu instalación, configura tu propio .env y conserva el APP_KEY original si necesitas leer datos cifrados existentes. Revisa DB_DATABASE y cualquier ruta absoluta para que apunten a la copia. Ejecuta `php artisan migrate` (nunca migrate:fresh). v0.4 no añade migraciones. No compartas esa copia privada ni su .env.
 
-# Archivos que no deben subirse a GitHub
+## Roles y usuarios
 
-Por seguridad y para evitar archivos innecesarios dentro del repositorio, no se deben subir:
+- `jefe`: mantiene todos sus permisos sobre facturas; además registra usuarios y envía correos.
+- `admin`: registra usuarios, consulta el listado y envía correos. No hereda automáticamente los permisos del jefe sobre facturas; se preserva el comportamiento anterior del flujo.
+- `usuario`: conserva el acceso a las facturas de su área; no puede acceder a la gestión ni enviar correos, incluso usando las URL directamente (403). Invitados van al login.
 
-- .env
-- vendor/
-- node_modules/
-- database/database.sqlite
+Desde **Usuarios**, registra nombre, correo único, contraseña de mínimo 12 caracteres y su confirmación, rol y área existente. Se guarda un hash; la contraseña no se muestra ni se envía por correo. Los correos nuevos se normalizan a minúsculas y se comprueba unicidad sin distinguir mayúsculas. El listado está paginado a 20 usuarios. Las áreas demo son Informática, Finanzas y Vivienda; se reutiliza la tabla existente y no se agrega un editor de áreas.
 
-El archivo .env puede contener configuraciones locales o información sensible.
+## Cuentas demo del seeder incluido
 
-La carpeta vendor/ se reconstruye mediante:
+Estas son las cuentas que realmente define `database/seeders/DemoUsersSeeder.php`. Si una ya existe, el seeder no cambia su contraseña ni sus permisos; por eso las claves siguientes solo corresponden a cuentas nuevas creadas por ese seeder.
 
-composer install
+| Correo | Contraseña demo | Rol | Área |
+|---|---|---|---|
+| jefe@example.test | JefeDemo!2026 | jefe | Informática |
+| informatica@example.test | InformaticaDemo!2026 | usuario | Informática |
+| finanzas@example.test | FinanzasDemo!2026 | usuario | Finanzas |
+| vivienda@example.test | ViviendaDemo!2026 | usuario | Vivienda |
 
-La base database/database.sqlite corresponde a información local y puede volver a crearse utilizando las migraciones.
+No hay una cuenta admin predefinida: el jefe puede crearla desde Usuarios. Las direcciones .test no reciben correo real. Usa estas cuentas solo en desarrollo.
 
-El archivo .gitignore del proyecto ya excluye estos elementos.
+## Configuración MAIL y envío
 
----
+Por defecto `MAIL_MAILER=log`: se renderiza el correo y se guarda en `storage/logs/laravel.log`, sin entregar mensajes reales. Para SMTP configura privadamente tu .env con los datos del proveedor:
 
-# Historial de versiones
+```dotenv
+MAIL_MAILER=smtp
+MAIL_SCHEME=smtp
+MAIL_HOST=smtp.example.com
+MAIL_PORT=587
+MAIL_USERNAME=usuario_de_ejemplo
+MAIL_PASSWORD=clave_de_ejemplo
+MAIL_FROM_ADDRESS=facturas@example.com
+MAIL_FROM_NAME="Sistema de Facturas"
+```
 
-## v0.1 — Parte 1
+Los valores son ejemplos, no credenciales utilizables. Para TLS implícito, si el proveedor lo indica, usa MAIL_SCHEME=smtps y puerto 465. El puerto 587 usa SMTP con STARTTLS cuando el servidor lo ofrece. Este proyecto usa MAIL_SCHEME, no MAIL_ENCRYPTION. Mantén MAIL_URL sin definir si configuras las variables separadas. Después ejecuta `php artisan config:clear`.
 
-Registro y almacenamiento básico de facturas.
+Inicia sesión como jefe/admin → Usuarios → Enviar correo junto al destinatario → escribe asunto y mensaje → Enviar correo. El destinatario se obtiene del usuario registrado en servidor. El remitente procede de MAIL_FROM_*, no del formulario. El envío es síncrono, no requiere un worker de colas, y está limitado a 10 solicitudes por minuto por usuario. El contenido se escapa como texto para impedir HTML inyectado.
 
-Se implementó:
+La aplicación informa del modo log/array, éxito de procesamiento o fallo del servicio sin mostrar detalles técnicos al usuario. Que SMTP acepte el mensaje no garantiza recepción: revisa la bandeja y spam. Tras un fallo ambiguo verifica el proveedor antes de reintentar para evitar duplicados. Los errores técnicos quedan en los registros privados de Laravel.
 
-- Estructura inicial del proyecto.
-- Registro de facturas.
-- Carga de PDF.
-- Almacenamiento.
-- Listado.
-- Descarga de documentos.
+Las notificaciones internas existentes siguen funcionando para el flujo de facturas. El correo manual no crea un aviso interno: la tabla avisos exige una factura asociada.
 
-## v0.2 — Parte 2
+## Cómo probar
 
-Autenticación, roles y áreas.
+1. Con jefe, crea una cuenta usuario con un correo real propio y un área. Comprueba que aparece en el listado y puede iniciar sesión.
+2. Prueba correo repetido, confirmación distinta y contraseña corta: deben mostrarse errores sin crear cuentas.
+3. Con la cuenta usuario abre /usuarios y /usuarios/1/correo: debe responder 403. Las rutas POST están protegidas de igual manera.
+4. Con jefe/admin envía primero en modo log y revisa el registro. Luego configura SMTP y envía a una dirección tuya; comprueba recepción. No uses las direcciones demo .test para esa prueba.
+5. Comprueba el flujo original de facturas por área, comprobantes e historial.
 
-Se agregó:
+```powershell
+php artisan route:list
+php artisan test
+php artisan view:cache
+php artisan view:clear
+```
 
-- Inicio de sesión.
-- Usuarios.
-- Roles.
-- Áreas.
-- Asociación entre usuarios y áreas.
-- Adaptación del registro de facturas a la nueva estructura.
+Las pruebas usan SQLite en memoria y transportes simulados/log, sin enviar correo a personas. UserManagementTest cubre ambos roles, bloqueo de usuarios/invitados, validación, hash, destinatario fijo, escape de HTML, fallos y modo log; se conservan las pruebas del flujo anterior.
 
-## v0.3 — Parte 3
+## Archivos principales de v0.4
 
-Workflow de seguimiento de facturas.
+- app/Http/Controllers/UserController.php: listado, alta y envío con validaciones.
+- app/Providers/AppServiceProvider.php y routes/web.php: autorización server-side y rutas protegidas.
+- app/Mail/UserMessage.php y resources/views/mail/user-message.blade.php: correo Laravel.
+- resources/views/users/* y resources/views/layouts/app.blade.php: formularios y navegación.
+- tests/Feature/UserManagementTest.php: pruebas de la funcionalidad nueva.
+- .env.example: solo se modifican valores MAIL de ejemplo; README.md: documentación v0.4.
 
-Se agregó:
+El ZIP excluye .env, vendor, node_modules, bases SQLite, cachés, registros, documentos privados y .git. Instala las dependencias con composer install. Conserva composer.lock para reproducir versiones.
 
-- Estados de factura.
-- Asignación.
-- Comprobantes.
-- Revisión.
-- Solicitud de corrección.
-- Confirmación.
-- Historial.
-- Eventos.
-- Notificaciones.
-- Edición.
-- Papelera.
-- Restauración.
-- Filtros.
-- Búsqueda.
-- Control de versiones.
+## Actualización v0.4: correo de asignación con PDF
 
----
+El jefe abre una factura recibida o por pagar, selecciona el área, escribe las instrucciones y pulsa **Enviar PDF y notificación**. Después de guardar la asignación, se envía un correo individual a cada cuenta con rol `usuario` de esa área. Incluye el PDF vigente completo, proveedor, folio, instrucciones y enlace para subir el comprobante. Los avisos internos se mantienen. El rol admin no cambia sus permisos sobre el flujo de facturas.
 
-# Estado del proyecto
+Usa MAIL_MAILER=log para pruebas y SMTP para entrega real. Configura APP_URL con una dirección accesible para los destinatarios: 127.0.0.1 solo funciona en el equipo local. Ejecuta `php artisan config:clear` después de cambiar la configuración. No requiere worker de colas.
 
-La versión actual es:
+La pantalla informa cuántos correos procesó el servicio o simuló el modo de prueba. Si falla un destinatario, se continúa con los demás y se muestran los fallos; se conserva la asignación. Si no se puede leer el PDF, se informa el error y no se envían correos. Las asignaciones rechazadas o revertidas no envían mensajes.
 
-v0.3
+No hay reintentos automáticos. Volver a asignar envía nuevamente a todos los usuarios del área elegida; revisa los resultados para evitar duplicados. Al reasignar, solo se envía al área nueva, pero no se pueden retirar adjuntos ya recibidos por correo. Coordina el pago dentro del área antes de realizarlo.
 
-El proyecto continúa en desarrollo, por lo que pueden incorporarse nuevas funcionalidades, ajustes y pruebas en versiones posteriores.
+La actualización añade InvoiceAssigned, su plantilla y InvoiceMailTest, y modifica WorkflowController y el formulario de asignación. Suite verificada: 33 pruebas, 379 verificaciones; no se realizó entrega SMTP real. Prueba con dos cuentas propias del área, revisa el adjunto recibido y confirma que corresponde al PDF actual. El correo manual de Usuarios sigue siendo de asunto y texto, sin adjunto.
 
-Las siguientes versiones podrían continuar como:
-
-v0.4
-v0.5
-v0.6
-
-La versión v1.0 se reservará para una versión considerada estable y preparada para su utilización final.
+Consulta **README.txt** para el procedimiento completo en texto plano: instalación PowerShell, ejecución, cuentas demo, SMTP, envío de factura para pago, respaldo y solución de problemas.

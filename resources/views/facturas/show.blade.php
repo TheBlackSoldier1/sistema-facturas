@@ -37,9 +37,9 @@
 @if($factura->trashed())
 <div class="card"><h2>Restaurar factura</h2><p>Recupera la factura con su estado y documentos anteriores.</p><form method="post" action="{{route('facturas.action',$factura)}}">@csrf<input type="hidden" name="version" value="{{$factura->version}}"><input type="hidden" name="accion" value="restaurar"><button>Restaurar factura</button></form></div>
 @elseif(in_array($factura->estado,['recibida','por_pagar']))
-<div class="card"><h2>Enviar PDF y notificar</h2><p>Selecciona el área responsable. Sus usuarios recibirán el PDF en su bandeja, con acceso para descargarlo y subir el comprobante.</p><form method="post" action="{{route('facturas.action',$factura)}}">@csrf<input type="hidden" name="version" value="{{$factura->version}}"><input type="hidden" name="accion" value="asignar"><label for="area">Área destinataria</label><select id="area" name="area_id" required><option value="">Selecciona un área</option>@foreach($areas as $area)<option value="{{$area->id}}" @selected($factura->area_id===$area->id)>{{$area->nombre}}</option>@endforeach</select>
+<div class="card"><h2>Enviar PDF y notificar</h2><p>Selecciona el área responsable. Los usuarios del área recibirán un aviso interno y un correo individual con el PDF adjunto y las instrucciones para pagar.</p><form method="post" action="{{route('facturas.action',$factura)}}">@csrf<input type="hidden" name="version" value="{{$factura->version}}"><input type="hidden" name="accion" value="asignar"><label for="area">Área destinataria</label><select id="area" name="area_id" required><option value="">Selecciona un área</option>@foreach($areas as $area)<option value="{{$area->id}}" @selected($factura->area_id===$area->id)>{{$area->nombre}}</option>@endforeach</select>
 <div id="recipients" aria-live="polite"></div>
-<label for="instructions">Mensaje para el área (opcional)</label><textarea id="instructions" name="motivo" maxlength="2000" placeholder="Indica qué deben revisar o adjuntar.">{{old('motivo')}}</textarea><button>Enviar PDF y notificación</button><small style="display:block;margin-top:10px">La factura quedará «Por pagar». La notificación se recibe dentro de esta aplicación.</small></form>
+<label for="instructions">Mensaje para el área (opcional)</label><textarea id="instructions" name="motivo" maxlength="2000" placeholder="Indica qué deben revisar o adjuntar.">{{old('motivo')}}</textarea><button>Enviar PDF y notificación</button><small style="display:block;margin-top:10px">La factura quedará «Por pagar». Se conserva el aviso interno y se envía correo según MAIL_*. En modo log/array no hay entrega real. Volver a asignar envía otro correo a todos los usuarios del área.</small></form>
 <script>
 const recipientsByArea = {{ Illuminate\Support\Js::from($destinatarios->map(fn($users)=>$users->map(fn($user)=>['name'=>$user->name,'email'=>$user->email])->values())) }};
 const areaSelect=document.getElementById('area'), recipientsBox=document.getElementById('recipients');
@@ -64,3 +64,4 @@ areaSelect.addEventListener('change',showRecipients);showRecipients();
 @endif
 </section></div>
 @endsection
+

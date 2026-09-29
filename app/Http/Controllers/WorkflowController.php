@@ -8,8 +8,10 @@ use App\Models\Documento;
 use App\Models\Evento;
 use App\Models\Factura;
 use App\Models\User;
+use App\Mail\InvoiceAssigned;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -99,7 +101,8 @@ class WorkflowController extends Controller
         abort_unless($r->user()->isJefe(), 403);
         $r->validate(['accion' => 'required|in:asignar,confirmar,corregir,eliminar,restaurar', 'motivo' => 'nullable|string|max:2000']);
 
-        return $this->change($r, $factura, function ($f) use ($r) {
+        $assignment = null;
+        $response = $this->change($r, $factura, function ($f) use ($r, &$assignment) {
             $before = $f->estado;
             $action = $r->string('accion')->toString();
             if ($action === 'restaurar') {
@@ -134,6 +137,7 @@ class WorkflowController extends Controller
                 $f->update(['area_id' => $area->id, 'estado' => 'por_pagar']);
                 self::event($f, $r, 'Enviada al área', $before, $previousArea.' → '.$area->nombre.($r->motivo ? '. Instrucciones: '.$r->motivo : ''));
                 $this->notify($f, 'El jefe te envió el PDF «'.$f->nombre_original.'». Descarga la factura, realiza el pago externamente y sube su comprobante para revisión.'.($r->motivo ? ' Instrucciones: '.$r->motivo : ''));
+                $assignment = [clone $f, User::where('role', 'usuario')->where('area_id', $area->id)->get(), $area->nombre];
             } else {
                 abort_unless($f->estado === 'en_revision', 422);
                 $receipt = $f->documentos()->where('tipo', 'comprobante')->latest('id')->first();
@@ -150,6 +154,42 @@ class WorkflowController extends Controller
                 }
             }
         });
+
+        // Enviar solo después de guardar la asignación y sus avisos internos.
+        // Un fallo SMTP no revierte datos ni impide intentar los demás destinatarios.
+        if ($assignment !== null) {
+            [$assigned, $recipients, $areaName] = $assignment;
+            $sent = 0;
+            $failed = [];
+            try {
+                $pdf = Storage::disk('local')->get($assigned->ruta_pdf);
+                if (! is_string($pdf) || $pdf === '') {
+                    throw new \RuntimeException('El PDF de la factura no está disponible.');
+                }
+            } catch (\Throwable $exception) {
+                report($exception);
+
+                return $response->withErrors(['mail' => 'La asignación y los avisos internos se guardaron, pero no se enviaron correos porque no se pudo leer el PDF. Revisa el archivo antes de volver a asignar.']);
+            }
+            foreach ($recipients as $recipient) {
+                try {
+                    Mail::to($recipient->email)->send(new InvoiceAssigned($assigned, $areaName, (string) $r->input('motivo', ''), $pdf));
+                    $sent++;
+                } catch (\Throwable $exception) {
+                    report($exception);
+                    $failed[] = $recipient->email;
+                }
+            }
+            $mode = in_array(config('mail.default'), ['log', 'array'], true)
+                ? "Correos de prueba con PDF: {$sent}; no se enviaron a bandejas reales."
+                : "Correos con PDF procesados por el servicio: {$sent}. Comprueba su recepción.";
+            $response->with('success', 'Asignación y avisos internos guardados. '.$mode);
+            if ($failed) {
+                $response->withErrors(['mail' => 'No se pudo confirmar el envío a: '.implode(', ', $failed).'. La asignación se conserva. Revisa el servicio antes de reintentar; volver a asignar envía nuevamente a todos los usuarios del área.']);
+            }
+        }
+
+        return $response;
     }
 
     public function update(Request $r, Factura $factura)

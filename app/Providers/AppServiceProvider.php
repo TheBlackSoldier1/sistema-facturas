@@ -19,6 +19,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        \Illuminate\Support\Facades\Gate::define('manage-users', fn (\App\Models\User $user) => in_array($user->role, ['jefe', 'admin'], true));
     }
 }
