@@ -122,42 +122,69 @@ Este historial resume los hitos documentados y el código disponible; no atribuy
 
 La v0.4 reutiliza las tablas de v0.3 y no añade migraciones. Conserva la asignación y administración de facturas exclusivamente para el jefe; el nuevo rol admin administra usuarios y correo manual.
 
-## Diagramas del sistema
+## Diagramas UML
 
-### Arquitectura general
+Se incluyen dos diagramas para mostrar la estructura principal y la interacción de asignación de facturas. Son una selección para documentar este proyecto, no un requisito general de PHP.
 
-```mermaid
-flowchart LR
-    B["Navegador: jefe, admin o usuario"] --> R["Rutas Laravel y sesión"]
-    R --> P["Autorización y validación en servidor"]
-    P --> C["Controladores de autenticación, facturas, flujo y usuarios"]
-    C --> V["Vistas Blade"]
-    V --> B
-    C --> D[("SQLite: usuarios, áreas, facturas, documentos, eventos y avisos")]
-    C --> F["Almacenamiento privado de PDFs"]
-    C --> M["Correo Laravel con MAIL_*"]
-    M --> S["SMTP: entrega mediante proveedor"]
-    M --> L["log / array: simulación sin entrega"]
-```
+### Diagrama de clases
 
-Los PDFs se guardan como archivos privados; SQLite conserva sus referencias y los datos del flujo. Los enlaces requieren sesión y permisos. Una copia adjunta enviada por correo queda fuera del control de acceso de la aplicación.
-
-### Flujo de estados de la factura
+Vista simplificada de los modelos de dominio. Se muestran atributos persistidos por Eloquent y algunos métodos de relación existentes; se omiten detalles internos de Laravel.
 
 ```mermaid
-stateDiagram-v2
-    [*] --> recibida: Jefe registra PDF
-    recibida --> por_pagar: Jefe asigna área
-    por_pagar --> por_pagar: Jefe vuelve a asignar
-    por_pagar --> en_revision: Usuario del área sube comprobante
-    en_revision --> correccion: Jefe solicita corrección
-    correccion --> en_revision: Usuario sube comprobante corregido
-    en_revision --> confirmada: Jefe aprueba comprobante
+classDiagram
+    class User {
+        string name
+        string email
+        string password
+        string role
+        area()
+        isJefe() bool
+    }
+    class Area {
+        string nombre
+    }
+    class Factura {
+        string nombre_original
+        string ruta_pdf
+        string estado
+        string proveedor
+        string folio
+        int version
+        area()
+        documentos()
+        eventos()
+    }
+    class Documento {
+        string tipo
+        string nombre
+        string ruta
+        int bytes
+    }
+    class Evento {
+        string accion
+        string anterior
+        string nuevo
+        string detalle
+    }
+    class Aviso {
+        string mensaje
+        datetime read_at
+        factura()
+    }
+    Area "0..1" -- "0..*" User : pertenece
+    Area "0..1" -- "0..*" Factura : asignada
+    User "0..1" -- "0..*" Factura : registra
+    Factura "1" -- "0..*" Documento : tiene
+    Factura "1" -- "0..*" Evento : registra
+    Factura "1" -- "0..*" Aviso : genera
+    User "0..1" -- "0..*" Documento : autor
+    User "0..1" -- "0..*" Evento : actor
+    User "1" -- "0..*" Aviso : recibe
 ```
 
-El pago se realiza externamente: subir el comprobante no confirma automáticamente el pago. Cada asignación genera avisos internos e intenta enviar el PDF por correo. La papelera es una eliminación lógica mediante `deleted_at`, no otro estado del pago; restaurar conserva el estado de la factura.
+`0..1` indica una relación opcional y `0..*` indica cero o varios registros. La base admite usuarios heredados sin área y facturas aún no asignadas; el formulario nuevo exige área. La contraseña se almacena con hash. Los PDF se guardan como archivos privados y los modelos conservan sus referencias.
 
-### Secuencia de asignación y correo con PDF
+### Diagrama de secuencia: asignar factura y enviar PDF
 
 ```mermaid
 sequenceDiagram
@@ -170,18 +197,18 @@ sequenceDiagram
     J->>A: Asignar área e instrucciones con versión del formulario
     A->>D: Validar y guardar estado, historial y avisos en transacción
     alt Asignación rechazada o transacción revertida
-        A-->>J: Error; no se envían correos
+        A-->>J: Error, no se envían correos
     else Asignación guardada
         A->>F: Leer PDF vigente
         alt PDF no disponible
-            A-->>J: Asignación conservada; error de adjunto
+            A-->>J: Asignación conservada, error de adjunto
         else PDF disponible
             loop Por cada cuenta usuario del área elegida
                 A->>M: Correo individual con instrucciones y PDF
                 alt El servicio procesa el mensaje
                     M-->>A: Resultado de procesamiento
                 else Falla el envío
-                    M-->>A: Error; continuar con el siguiente usuario
+                    M-->>A: Error, continuar con el siguiente usuario
                 end
             end
             A-->>J: Resumen de procesados o simulados y fallos
@@ -192,21 +219,4 @@ sequenceDiagram
     end
 ```
 
-SMTP procesado no garantiza recepción. En log/array solo se simula el correo. Los avisos internos y la asignación permanecen guardados aunque falle el correo. No hay cola ni reintento automático; volver a asignar puede duplicar mensajes ya recibidos.
-
-### Relaciones principales de datos
-
-```mermaid
-erDiagram
-    AREAS o|--o{ USERS : "area_id"
-    AREAS o|--o{ FACTURAS : "area_id"
-    USERS o|--o{ FACTURAS : "uploaded_by"
-    FACTURAS ||--o{ DOCUMENTOS : "factura_id"
-    FACTURAS ||--o{ EVENTOS : "factura_id"
-    FACTURAS ||--o{ AVISOS : "factura_id"
-    USERS o|--o{ DOCUMENTOS : "user_id autor"
-    USERS o|--o{ EVENTOS : "user_id actor"
-    USERS ||--o{ AVISOS : "user_id destinatario"
-```
-
-El diagrama muestra las relaciones principales, sin las tablas técnicas de sesiones, caché y trabajos. La base permite área nula en usuarios heredados y facturas sin asignar; el formulario nuevo de usuarios exige un área. Documentos y eventos admiten autor nulo para registros históricos. Cada aviso interno pertenece a una factura y a un usuario. El correo no añade una tabla propia de seguimiento de entregas.
+El envío ocurre después de guardar la asignación. Un fallo de correo no revierte los avisos internos ni el estado. El pago es externo y el comprobante requiere revisión del jefe. En log/array no hay entrega real y no se ejecutan reintentos automáticos.

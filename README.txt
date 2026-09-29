@@ -446,105 +446,87 @@ para mantener la secuencia de desarrollo usada en este proyecto.
 v0.4 no agrega migraciones. La asignación y administración de facturas
 siguen siendo funciones del jefe. Admin gestiona usuarios y correo manual.
 
-16. DIAGRAMAS EN TEXTO PLANO
+16. DIAGRAMAS UML
 
-El README.md contiene los mismos conceptos en diagramas Mermaid.
-Esta versión permite leerlos sin un visor de diagramas.
+Se conservan únicamente clases y secuencia para mostrar este proyecto.
+PHP no exige un conjunto obligatorio de diagramas. README.md contiene
+su representación gráfica en Mermaid. Aquí se ofrece la versión textual.
 
-A. ARQUITECTURA GENERAL
+A. CLASES PRINCIPALES
 
-[Navegador: jefe / admin / usuario]
-                  |
-                  v
-[Rutas Laravel + sesión + autorización + validación]
-                  |
-                  v
-[Controladores] --------------------> [Vistas Blade -> Navegador]
-       |
-       +--> [SQLite: datos, estados, historial y avisos]
-       |
-       +--> [Almacenamiento privado: PDFs]
-       |
-       +--> [Correo Laravel: configuración MAIL_*]
-                         |
-                         +--> SMTP: proveedor de correo
-                         +--> log/array: simulación sin entrega
++---------------------------+    +---------------------------+
+| User                      |    | Area                      |
++---------------------------+    +---------------------------+
+| name, email, password     |    | nombre                    |
+| role                      |    +---------------------------+
++---------------------------+
+| area(), isJefe()          |
++---------------------------+
 
-Los archivos PDF no se almacenan dentro de SQLite: la base conserva
-sus referencias. El acceso web exige permisos. Un PDF adjunto ya recibido
-por correo queda fuera del control de acceso de la aplicación.
++---------------------------+    +---------------------------+
+| Factura                   |    | Documento                 |
++---------------------------+    +---------------------------+
+| nombre_original, ruta_pdf |    | tipo, nombre, ruta, bytes |
+| estado, proveedor, folio  |    +---------------------------+
+| version                   |
++---------------------------+
+| area(), documentos()      |
+| eventos()                 |
++---------------------------+
 
-B. ESTADOS DE UNA FACTURA
++---------------------------+    +---------------------------+
+| Evento                    |    | Aviso                     |
++---------------------------+    +---------------------------+
+| accion, anterior, nuevo   |    | mensaje, read_at          |
+| detalle                   |    +---------------------------+
++---------------------------+    | factura()                 |
+                                 +---------------------------+
 
-Jefe registra PDF
-       |
-       v
-   [recibida]
-       | Jefe asigna área
-       v
-   [por_pagar] <--- Volver a asignar mantiene este estado
-       | Usuario del área paga externamente y sube comprobante
-       v
-   [en_revision] ----------------------> [confirmada]
-       |                                  Jefe aprueba
-       | Jefe solicita corrección
-       v
-   [correccion]
-       | Usuario sube comprobante corregido
-       +------------------------------> [en_revision]
+Asociaciones y multiplicidades:
 
-Cada asignación guarda avisos internos e intenta enviar correo con PDF.
-Subir el comprobante no confirma el pago automáticamente.
-La papelera usa deleted_at: no es otro estado del pago. Al restaurar,
-la factura conserva su estado.
+Area    [0..1] -------- [0..*] User       pertenece
+Area    [0..1] -------- [0..*] Factura    asignada
+User    [0..1] -------- [0..*] Factura    registra
+Factura [1]    -------- [0..*] Documento  tiene
+Factura [1]    -------- [0..*] Evento     registra
+Factura [1]    -------- [0..*] Aviso      genera
+User    [0..1] -------- [0..*] Documento  autor
+User    [0..1] -------- [0..*] Evento     actor
+User    [1]    -------- [0..*] Aviso      recibe
 
-C. ASIGNACIÓN Y ENVÍO CON PDF
+0..1 significa relación opcional. 0..* significa cero o varios registros.
+Se muestran atributos persistidos por Eloquent y algunos métodos reales.
+La base permite área nula en usuarios heredados y facturas sin asignar;
+el formulario nuevo exige área. La contraseña se guarda con hash.
+Los PDF son archivos privados; los modelos guardan sus referencias.
 
-Jefe selecciona área, instrucciones y envía el formulario
-       |
-       v
-Servidor valida permisos, estado, usuarios y versión
-       |
-       +-- Rechazo/fallo de transacción --> Error; ningún correo
-       |
-       v
-Transacción guarda asignación + historial + avisos internos
-       |
-       v
-Leer PDF vigente del almacenamiento privado
-       |
-       +-- Archivo ausente o ilegible --> Error; asignación conservada
-       |
-       v
-Por cada usuario del área: correo individual + instrucciones + PDF
-       |
-       +-- Procesado --> Contar resultado
-       +-- Error -----> Registrar fallo y continuar con los demás
-       |
-       v
-Mostrar resumen de procesados/simulados y destinatarios fallidos
+B. SECUENCIA: ASIGNAR FACTURA Y ENVIAR PDF
 
-Después, el usuario inicia sesión, revisa el estado actual, realiza
-el pago externamente y sube el comprobante para revisión del jefe.
-SMTP procesado no garantiza recepción; log/array no entrega mensajes.
-No hay reintento automático. Volver a asignar puede duplicar correos.
+Orden de mensajes entre participantes:
 
-D. RELACIONES PRINCIPALES DE DATOS
+Jefe       -> Aplicación: asignar área e instrucciones con versión
+Aplicación -> Base de datos: validar y guardar en transacción
 
-AREA --------< USUARIOS       (users.area_id)
-AREA --------< FACTURAS       (facturas.area_id)
-USUARIO -----< FACTURAS       (facturas.uploaded_by)
-FACTURA -----< DOCUMENTOS     (documentos.factura_id)
-FACTURA -----< EVENTOS        (eventos.factura_id)
-FACTURA -----< AVISOS         (avisos.factura_id)
-USUARIO -----< DOCUMENTOS     (documentos.user_id: autor)
-USUARIO -----< EVENTOS        (eventos.user_id: actor)
-USUARIO -----< AVISOS         (avisos.user_id: destinatario)
+  [Asignación rechazada o transacción revertida]
+  Aplicación -> Jefe: error, sin envío de correos
 
-La notación A -----< B significa que un registro A puede relacionarse
-con varios registros B. La base admite área nula para usuarios heredados
-y facturas sin asignar. El formulario nuevo de usuarios exige área.
-Los autores de documentos/eventos pueden ser nulos en datos históricos.
-Cada aviso pertenece a una factura y a un usuario. No hay una tabla propia
-de seguimiento de entrega de correos. Se omiten tablas técnicas de
-sesiones, caché y trabajos.
+  [Asignación guardada: estado, historial y avisos internos]
+  Aplicación -> Almacenamiento: leer PDF vigente
+
+    [PDF no disponible]
+    Aplicación -> Jefe: error de adjunto, asignación conservada
+
+    [PDF disponible, repetir por cada usuario del área]
+    Aplicación -> Correo: mensaje individual con instrucciones y PDF
+    Correo -> Aplicación: resultado o error
+    Aplicación: continuar con los demás destinatarios aunque uno falle
+
+  Aplicación -> Jefe: resumen de procesados/simulados y fallos
+  Usuario del área -> Aplicación: iniciar sesión y consultar factura
+  Usuario del área -> Aplicación: subir comprobante tras pagar externamente
+  Aplicación -> Base de datos: guardar comprobante y estado en_revision
+
+El envío ocurre después de guardar la asignación. Un fallo de correo
+no revierte los avisos internos ni el estado. El pago es externo y
+el comprobante requiere revisión del jefe. En log/array no hay entrega
+real y no se ejecutan reintentos automáticos.
